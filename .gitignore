@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.sqlite*
+*.db*
+.DS_Store
+.env
+*.tgz

@@ -1,0 +1,61 @@
+{
+  "name": "gitlab-index",
+  "version": "0.1.0",
+  "description": "Local, evidence-based technology inventory for GitLab projects",
+  "type": "module",
+  "bin": {
+    "gitlab-index": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "start": "node --import tsx src/cli.ts",
+    "smoke": "node --import tsx scripts/smoke.ts",
+    "prepack": "npm run build",
+    "test:package": "node scripts/test-package.mjs"
+  },
+  "dependencies": {
+    "@renovatebot/pep440": "^4.0.0",
+    "commander": "^14.0.0",
+    "fast-xml-parser": "^5.0.0",
+    "minimatch": "^10.0.0",
+    "semver": "^7.7.0",
+    "smol-toml": "^1.4.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/semver": "^7.7.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jesusr00/gitlab-index.git"
+  },
+  "homepage": "https://github.com/jesusr00/gitlab-index#readme",
+  "bugs": {
+    "url": "https://github.com/jesusr00/gitlab-index/issues"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "gitlab",
+    "cli",
+    "inventory",
+    "technology",
+    "sqlite"
+  ]
+}
