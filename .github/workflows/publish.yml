@@ -1,0 +1,56 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm ci
+      - name: Verify release identity
+        run: node scripts/check-release.mjs
+      - name: Build the npm tarball
+        run: npm pack --pack-destination "$RUNNER_TEMP"
+      - name: Publish to npm with OIDC
+        run: |
+          version=$(node -p "require('./package.json').version")
+          dist_tag=latest
+          if [[ "$version" == *-* ]]; then dist_tag=next; fi
+          npm publish "$RUNNER_TEMP/gitlab-index-$version.tgz" --access public --tag "$dist_tag"
+      - name: Create GitHub release and attach the published tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          prerelease=()
+          if [[ "$version" == *-* ]]; then prerelease+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/gitlab-index-$version.tgz" \
+            --verify-tag --generate-notes --title "$GITHUB_REF_NAME" "${prerelease[@]}"
