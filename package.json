@@ -19,7 +19,7 @@
     "test:package": "node scripts/test-package.mjs"
   },
   "dependencies": {
-    "@renovatebot/pep440": "^4.0.0",
+    "@renovatebot/pep440": "^5.0.1",
     "commander": "^15.0.0",
     "fast-xml-parser": "^5.0.0",
     "minimatch": "^10.0.0",
