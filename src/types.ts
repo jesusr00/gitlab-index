@@ -21,6 +21,7 @@ export interface Project {
   ciConfigPath?: string | null;
 }
 export interface Search {
+  project?: string;
   technology?: string;
   major?: number;
   version?: string;

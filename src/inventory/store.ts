@@ -124,6 +124,7 @@ export class Inventory {
     const cutoff = query.activeSince ? parseActivityDate(query.activeSince) : activityCutoff();
     if (activity === 'active') { conditions += ' AND p.last_commit_at >= ?'; params.push(cutoff); }
     if (activity === 'inactive') { conditions += ' AND (p.empty=1 OR p.last_commit_at < ?)'; params.push(cutoff); }
+    if (query.project) { conditions += ' AND instr(lower(p.path), lower(?)) > 0'; params.push(query.project); }
     if (query.technology) { conditions += ' AND f.technology = ?'; params.push(query.technology.toLowerCase()); }
     if (projectId !== undefined) { conditions += ' AND f.project_id = ?'; params.push(projectId); }
     const rows = this.db.prepare(`SELECT f.*,p.path AS project,p.url AS project_url,p.archived,p.member,p.empty,p.last_commit_at,p.status AS scan_status FROM findings f

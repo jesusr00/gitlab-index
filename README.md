@@ -43,6 +43,8 @@ gitlab-index sync
 gitlab-index sync --force
 gitlab-index projects
 gitlab-index search --technology node
+gitlab-index search --project frontend
+gitlab-index search --project team/frontend --technology node --major 24
 gitlab-index search --technology node --major 24
 gitlab-index search --technology node --activity inactive
 gitlab-index search --technology node --activity all
@@ -70,6 +72,8 @@ gitlab-index --database /tmp/example-index.sqlite search --technology node --for
 - `projects` and `search` accept `--include-non-members` to include projects absent from the last completed membership refresh. `--include-inactive` remains a legacy alias for that membership option; use `--activity` for commit activity. `show` can inspect any indexed project directly.
 - Technology names are case-insensitive; use manifest dependency names, for example `@nestjs/core`, `org.springframework.boot:spring-boot-starter`, `newtonsoft.json` or `laravel/framework`. Python names normalize `.`, `_` and `-` to `-`.
 
+Use `--project <text>` to match a literal substring of the project path, including its namespace, without case sensitivity. For example, `--project frontend` matches `team/frontend-app`, and `--project team/frontend` narrows by namespace. It works alone to list all technology findings for matching projects, or alongside technology/version filters. At least one of `--technology` or `--project` is required. The filter uses the offline inventory and requires no new sync. Projects without technology findings do not appear in search; use `projects` to list the inventory.
+
 Search defaults to `--activity active`: projects whose last **default-branch commit** is dated on or after six calendar months ago, starting at midnight UTC. Month ends are clamped to the last valid day. For example, on October 27, 2026, the default cutoff is April 27, 2026. `--activity inactive` selects older commits; `--activity all` removes the activity filter. Override the cutoff with `--active-since YYYY-MM-DD`, for example `--activity inactive --active-since 2026-01-01` to find projects whose last commit precedes January 1. The cutoff is inclusive for active projects and exclusive for inactive projects. Repository activity timestamps, issue updates and commits on other branches are not used.
 
 Existing inventories migrate automatically while retaining findings and membership. Run a normal `sync` once to populate commit dates; unchanged projects update this metadata without downloading manifests again, so `--force` is unnecessary. Unknown commit dates are excluded from both active and inactive searches and produce a stderr reminder; `--activity all` keeps their findings accessible. Empty repositories are inactive and have no technology findings. JSON separates `member` (membership), `active` (true/false, or null when unknown) and `lastCommitAt` (ISO timestamp). Activity uses the latest saved commit date and the current cutoff, so it can change as time passes even without another sync. Run `sync` to discover newer commits.
@@ -80,7 +84,9 @@ The first synchronization can take substantial time across large accounts. All m
 
 During a scan, stderr identifies the project and reports tree-listing progress after the first page and approximately every 1,000 entries, followed by the manifest count, periodic file-read progress and additional CI files. Tree listing currently includes generated directory entries; exclusions apply when selecting manifests to download, so large committed dependency trees can take time even when few manifests are relevant.
 
-Every progress line starts with the global repository percentage and count, for example `[75.0% 3/4] unchanged team/app`. The total becomes available after membership discovery. Scanned, unchanged, empty and failed projects each count once as processed; interrupted projects do not count as completed. `100.0%` means every repository was processed, not that every scan succeeded. Percentages measure repositories rather than time or files, so the last few large repositories may take longer. Progress stays on stderr with `--format json`.
+Before the repository total is known, an animated loading indicator appears while discovering GitLab memberships. Redirected stderr receives one plain discovery message without animation. The indicator clears when percentage progress starts, or if discovery fails or is interrupted.
+
+Every scan progress line starts with the global repository percentage and count, for example `[75.0% 3/4] unchanged team/app`. The total becomes available after membership discovery. Scanned, unchanged, empty and failed projects each count once as processed; interrupted projects do not count as completed. `100.0%` means every repository was processed, not that every scan succeeded. Percentages measure repositories rather than time or files, so the last few large repositories may take longer. Progress stays on stderr with `--format json`.
 
 ## Evidence and version matching
 

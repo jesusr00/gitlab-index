@@ -8,6 +8,7 @@ import { GitLab, GlabTransport } from './gitlab/client.js';
 import { configuredHost, saveHost } from './config/host.js';
 import type { Search } from './types.js';
 import { parseActivityDate } from './inventory/activity.js';
+import { startDiscoveryLoading } from './presentation/loading.js';
 import { renderFindings, renderProjectDetails, formatDate } from './presentation/findings.js';
 
 function integer(value: string): number {
@@ -47,12 +48,15 @@ program.command('sync').description('Refresh project membership and scan default
     process.once('SIGINT', interrupt); process.once('SIGTERM', interrupt);
     try {
       await withInventory(async (inventory, host) => {
-        const result = await synchronize(inventory, host, new GitLab(new GlabTransport(host)), {
-          force: opts.force, concurrency: opts.concurrency, signal: controller.signal,
-          onProgress: message => process.stderr.write(message + '\n'),
-        });
-        output(opts.format === 'json' ? result : [result], opts.format);
-        if (result.failed) process.exitCode = 1;
+        const stopLoading = startDiscoveryLoading();
+        try {
+          const result = await synchronize(inventory, host, new GitLab(new GlabTransport(host)), {
+            force: opts.force, concurrency: opts.concurrency, signal: controller.signal,
+            onProgress: message => { stopLoading(); process.stderr.write(message + '\n'); },
+          });
+          output(opts.format === 'json' ? result : [result], opts.format);
+          if (result.failed) process.exitCode = 1;
+        } finally { stopLoading(); }
       });
     } finally { process.removeListener('SIGINT', interrupt); process.removeListener('SIGTERM', interrupt); }
   });
@@ -65,7 +69,8 @@ program.command('projects').description('List indexed projects and scan status')
     output(opts.format === 'json' ? projects : projects.map(p => ({ id: p.id, project: p.path, branch: p.defaultBranch, archived: p.archived, active: p.active, member: p.member, lastCommit: formatDate(p.lastCommitAt), status: p.status, scannedAt: formatDate(p.scannedAt), checkedAt: formatDate(p.checkedAt), error: p.error })), opts.format);
   }));
 program.command('search').description('Search declarations in the local inventory (offline)')
-  .requiredOption('--technology <name>', 'Technology or dependency name (case-insensitive)')
+  .option('--technology <name>', 'Technology or dependency name (case-insensitive)')
+  .option('--project <name>', 'Project name or namespace/path substring (case-insensitive)')
   .option('--major <number>', 'Explicitly selected major version', integer)
   .option('--version <version>', 'Exact declared version (not constraint compatibility)')
   .option('--compatible-with <version>', 'Declarations compatible with a concrete version')
@@ -75,10 +80,12 @@ program.command('search').description('Search declarations in the local inventor
   .option('--include-non-members', 'Include projects no longer in membership')
   .option('--format <format>', 'table or json', 'table')
   .action(async opts => {
+    if (!opts.technology && !opts.project?.trim()) throw new Error('Specify --technology or --project');
+    if (opts.project !== undefined && !opts.project.trim()) throw new Error('--project must not be empty');
     if ([opts.major !== undefined, !!opts.version, !!opts.compatibleWith].filter(Boolean).length > 1) throw new Error('Use only one of --major, --version, and --compatible-with');
     if (opts.compatibleWith && !/^\d+(?:\.\d+)*(?:(?:[-+.]|[ab]|rc|post|dev)[\w.-]+)?$/.test(opts.compatibleWith)) throw new Error('--compatible-with requires a concrete version');
     await withInventory((inventory, host) => {
-      const query: Search = { technology: opts.technology, major: opts.major, version: opts.version, compatibleWith: opts.compatibleWith, includeNonMembers: opts.includeNonMembers || opts.includeInactive, activity: opts.activity, activeSince: opts.activeSince };
+      const query: Search = { project: opts.project?.trim(), technology: opts.technology, major: opts.major, version: opts.version, compatibleWith: opts.compatibleWith, includeNonMembers: opts.includeNonMembers || opts.includeInactive, activity: opts.activity, activeSince: opts.activeSince };
       const findings = inventory.search(host, query);
       if (query.activity !== 'all') {
         const missing = inventory.missingCommitDates(host, query.includeNonMembers);
