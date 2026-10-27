@@ -1,6 +1,6 @@
 {
   "name": "gitlab-index",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Local, evidence-based technology inventory for GitLab projects",
   "type": "module",
   "bin": {
